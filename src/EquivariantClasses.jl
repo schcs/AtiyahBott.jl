@@ -10,6 +10,7 @@ export
     Euler_inv
 
 using LightGraphs: SimpleEdge
+using Nemo
 
 """
     Incidency(g, c, w, s, r)
@@ -48,9 +49,9 @@ Result: 756//1
     The program will stop if `r` is not positive.
 
 """
-function Incidency(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{Rational{BigInt}}, r::Int64)::Rational{BigInt}
+function Incidency(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{fmpq}, r::Int64)::fmpq
     
-    local p1 = Rational{BigInt}(0); #the final result
+    local p1 = fmpq(0); #the final result
     r -= 1                          
     
     # col = Dict(vertices(g).=> coloration) #assign colors to vertices
@@ -66,9 +67,9 @@ function Incidency(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, s
 
 end
 
-function Incidency(g::SimpleGraph, coloration::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{Rational{BigInt}}, r::Vector{Int64})::Rational{BigInt}
+function Incidency(g::SimpleGraph, coloration::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{fmpq}, r::Vector{Int64})::fmpq
     
-    local p1 = Rational{BigInt}(1);
+    local p1 = fmpq(1);
     
     for j in unique(r)
         p1 *= Incidency(g, coloration, weights, scalars, j)^count(x->x==j, r)
@@ -119,31 +120,39 @@ Result: 25705160//1
     The program will stop if `b` is not positive.
 
 """
-function Hypersurface(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{Rational{BigInt}}, b::Int64)::Rational{BigInt}
+function Hypersurface(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{fmpq}, b::Int64)::fmpq
 
-    local p1 = Rational{BigInt}(1)
-    local q1 = Rational{BigInt}(1)
+    local p1 = fmpq(1)
+    local q1 = fmpq(1)
     
     # col = Dict(vertices(g).=> coloration) #assign colors to vertices
     d = Dict(edges(g).=> weights) #assign weights to edges
     
     for e in edges(g)
         for alph in 0:(b*d[e])
-            p1 *= (alph*scalars[col[src(e)]]+(b*d[e]-alph)*scalars[col[dst(e)]])//d[e]
+            a = fmpq( 1 ); c = fmpq( 1 )
+            mul!( a, scalars[col[src(e)]], fmpq(alph) )
+            mul!( c, scalars[col[dst(e)]], fmpq(b*d[e]-alph))
+            a = addeq!( a, c )
+            mul!( a, a, inv(fmpq(d[e])))
+            p1 = mul!( p1, p1, a )
         end
     end
     
     for v in vertices(g)
-        q1 *= (b*scalars[col[v]])^(1-length(all_neighbors(g, v)))   
+        a = fmpq( 1 )
+        mul!( a, scalars[col[v]], fmpq( b ))
+        a = a^(1-length(all_neighbors(g, v)))
+        mul!( q1, q1, a )
     end
 
     return p1*q1
 
 end
 
-function Hypersurface(g::SimpleGraph, coloration::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{Rational{BigInt}}, b::Vector{Int64})::Rational{BigInt}
+function Hypersurface(g::SimpleGraph, coloration::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{fmpq}, b::Vector{Int64})::fmpq
 
-    local p1 = Rational{BigInt}(1)
+    local p1 = fmpq(1)
     
     for j in unique(b)
         p1 *= Hypersurface(g, coloration, weights, scalars, j)^count(x->x==j, b)
@@ -175,10 +184,10 @@ julia> AtiyahBottFormula(3,1,2,P);
 Result: 1//1
 ```
 """
-function Contact(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{Rational{BigInt}})::Rational{BigInt}
+function Contact(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{fmpq})::fmpq
 
-    local p1 = Rational{BigInt}(1)
-    local q1 = Rational{BigInt}(1)
+    local p1 = fmpq(1)
+    local q1 = fmpq(1)
     
     # col = Dict(vertices(g).=> coloration) #assign colors to vertices
     d = Dict(edges(g).=> weights) #assign weights to edges
@@ -232,7 +241,7 @@ Result: 4//1
     The program will stop if `i` is not between 1 and the number of marks.
 
 """
-function O1_i(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{Rational{BigInt}}, mark::Marks, i::Int64)::Rational{BigInt}
+function O1_i(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{fmpq}, mark::Marks, i::Int64)::fmpq
     
     # col = Dict(vertices(g).=> coloration) #assing colors to vertices
     
@@ -279,9 +288,9 @@ julia> P = (g,c,w,s,m) -> O1(g,c,w,s,m)//O1_i(g,c,w,s,m,1);
 ```
 Here `P` is the product of all `O1_i(g,c,w,s,m,i)` where `i` runs from 2 to `m`.
 """
-function O1(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{Rational{BigInt}}, mark::Marks)::Rational{BigInt}
+function O1(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{fmpq}, mark::Marks)::fmpq
     
-    local p1 = Rational{BigInt}(1)
+    local p1 = fmpq(1)
     # col = Dict(vertices(g).=> coloration)
     
     for t in 1:mark.m
@@ -320,10 +329,10 @@ Result: 1//1
     The program will stop if `k` is not positive.
 
 """
-function R1(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{Rational{BigInt}}, k::Int64)::Rational{BigInt}
+function R1(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{fmpq}, k::Int64)::fmpq
     
-    local p1 = Rational{BigInt}(1)
-    local q1 = Rational{BigInt}(1)
+    local p1 = fmpq(1)
+    local q1 = fmpq(1)
     
     # col = Dict(vertices(g).=> coloration) #assign colors to vertices
     d = Dict(edges(g).=> weights) #assign weights to edges
@@ -418,17 +427,17 @@ Result: -5//16
     Result: 1//8
     ```
 """
-function Psi(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{Rational{BigInt}}, mark::Marks, a::Int64)::Rational{BigInt}
+function Psi(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{fmpq}, mark::Marks, a::Int64)::fmpq
     
     return Psi(g, col, weights, scalars, mark, [a])
 end
-function Psi(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{Rational{BigInt}}, mark::Marks, a::Vector{Int64})::Rational{BigInt}
+function Psi(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{fmpq}, mark::Marks, a::Vector{Int64})::fmpq
     
     if findfirst(x -> x>0, a) === nothing #if all of them are zero or a is empty
-        return Rational{BigInt}(1)
+        return fmpq(1)
     end
     
-    local q1 = Rational{BigInt}(1)
+    local q1 = fmpq(1)
 
     local inv_marks::Dict{Int64,Vector{Int64}} = invert_marks(mark)
     
@@ -456,10 +465,10 @@ function Psi(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars
         a_v = [a[i] for i in inv_marks[v]]
         Sum_ai = sum(a_v)
         if Sum_ai > N-3
-            return Rational{BigInt}(0)
+            return fmpq(0)
         end
 
-        local s1 = Rational{BigInt}(0)
+        local s1 = fmpq(0)
         
         for w in nghbrs
             e = (SimpleEdge(v,w) in edges(g)) ? SimpleEdge(v,w) : SimpleEdge(w,v)
@@ -512,9 +521,9 @@ julia> P = (g,c,w,s,m) -> (O1(g,c,w,s,m)^2)//k*Jet(g,c,w,s,m,4*d-2,k);
 julia> d=1;k=1;AtiyahBottFormula(3,d,1,P);   #The value of this integral does not depend on k, only on d
 ```
 """
-function Jet(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{Rational{BigInt}}, mark::Marks, p::Int64, q::Int64)::Rational{BigInt}
+function Jet(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{fmpq}, mark::Marks, p::Int64, q::Int64)::fmpq
     
-    local s1 = Rational{BigInt}(0)
+    local s1 = fmpq(0)
     for h in 0:p
         s1 += stirlings1(p+1, p+1-h)*(q*O1_i(g, col, weights, scalars, mark, 1))^(p+1-h)*Psi(g, col, weights, scalars, mark, [h])
     end
@@ -535,10 +544,10 @@ The inverse of the (equivariant) Euler class of the normal bundle. This function
 - `m::Marks`: the marks.
 
 """
-function Euler_inv(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{Rational{BigInt}}, mark::Marks)::Rational{BigInt}
+function Euler_inv(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, scalars::Vector{fmpq}, mark::Marks)::fmpq
    
-    local V = Rational{BigInt}(1)
-    local E = Rational{BigInt}(1)
+    local V = fmpq(1)
+    local E = fmpq(1)
     
     # col = Dict(vertices(g).=> coloration) #assing colors to vertices
     d = Dict(edges(g).=> weights) #assign weights to edges
@@ -549,29 +558,40 @@ function Euler_inv(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, s
     max_col = length(scalars)
     
     for e in edges(g)
-        local q1 = Rational{BigInt}(1)
+        local q1 = fmpq(1)
         for j in 1:max_col
             if j != col[src(e)] && j != col[dst(e)]
                 for alph in 0:d[e]
-                    q1 *= ((alph*scalars[col[src(e)]]+(d[e]-alph)*scalars[col[dst(e)]])//d[e]-scalars[j])
+                    a = fmpq( 1 )
+                    mul!( a, scalars[col[src(e)]], fmpq( alph ))
+                    b = fmpq( 1 )
+                    mul!( b, scalars[col[dst(e)]], fmpq( d[e]-alph ))
+                    addeq!( a, b )
+                    mul!( a, a, inv( fmpq( d[e] )))
+                    addeq!( a, -fmpq(scalars[j]))
+                    mul!( q1, q1, a )
                 end
             end
         end
-        E *= ((omega_inv[e])^(2*d[e]))*((-1)^d[e])//(factorial(d[e])^2)//q1
+        mul!( E, E, omega_inv[e]^(2*d[e])*((-1)^d[e]))
+        mul!( E, E, inv(fmpq(factorial(d[e])^2)))
+        mul!( E, E, inv( fmpq( q1 )))
     end
     
     for v in vertices(g)
         nghbrs = all_neighbors(g, v)
-        local p1 = Rational{BigInt}(1)
+        local p1 = fmpq(1)
         for j in 1:max_col
             if j != col[v]
-                p1 *= scalars[col[v]]-scalars[j]
+                a = deepcopy( scalars[col[v]] )
+                addeq!( a, -scalars[j] )
+                mul!( p1, p1, a )
             end
         end
         p1 ^= length(nghbrs)-1
         
-        local s1 = Rational{BigInt}(0)
-        local r1 = Rational{BigInt}(1)
+        local s1 = fmpq(0)
+        local r1 = fmpq(1)
         
         for w in nghbrs
             e = SimpleEdge(v,w)
@@ -579,7 +599,10 @@ function Euler_inv(g::SimpleGraph, col::Vector{UInt8}, weights::Vector{Int64}, s
             r1 *= omega_inv[e]
         end
         s1 ^= length(nghbrs) + num_marks(mark,v) - 3
-        V *= p1*s1*r1
+        mul!( V, V, p1 )
+        mul!( V, V, s1 )
+        mul!( V, V, r1 )
+        #V *= p1*s1*r1
 
     end
 

@@ -14,6 +14,7 @@ using LightGraphs
 using ProgressMeter
 using Downloads
 using CodecZlib
+using Nemo
 
 const current_dir = @__DIR__
 

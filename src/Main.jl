@@ -28,13 +28,13 @@ end
 Apply the Atiyah-Bott formula to all colorations of a specific graph. It is useful for splitting the computation in multiple parts, to be computed in single threads.
 """
 function AtiyahBottFormulaForGraph(g::SimpleGraph, pruf_str::String, 
-    aut::Int64, n::Int64, deg::Int64, n_marks::Int64, P, s::Vector{Rational{BigInt}},
-    progress_data::ProgressData = EmptyProgressData())::Vector{Rational{BigInt}}
+    aut::Int64, n::Int64, deg::Int64, n_marks::Int64, P, s::Vector{fmpq},
+    progress_data::ProgressData = EmptyProgressData())::Vector{fmpq}
 
     local weights::Vector{Vector{Int64}} = get_weights(nv(g)-1, deg) #the array of array of weights
 
     local n_results::Int64 = length(P)   #this store the number of final results of our computation
-    local result::Vector{Rational{BigInt}} = zeros(Rational{BigInt}, n_results) #the array of final results
+    local result::Vector{fmpq} = zeros(fmpq, n_results) #the array of final results
     
     #for N in 1:n
 
@@ -58,7 +58,7 @@ function AtiyahBottFormulaForGraph(g::SimpleGraph, pruf_str::String,
             for m in Marks(nv(g), n_marks)    #we run among all marks of g, if n_marks==0 we have only the empty mark
                 for w in weights          #we run among all weights of g
                     try
-                        local Euler::Rational{BigInt} = Euler_inv(g,c,w,s,m)//(aut*prod(w)) #the contribuition of the Euler class in the Atiyah-Bott formula
+                        local Euler::fmpq = Euler_inv(g,c,w,s,m)//(aut*prod(w)) #the contribuition of the Euler class in the Atiyah-Bott formula
                         for res in 1:n_results      #compute each term of the array P
                             result[res] += P[res](g,c,w,s,m)*Euler    #apply Atiyah-Bott
                         end
@@ -68,7 +68,7 @@ function AtiyahBottFormulaForGraph(g::SimpleGraph, pruf_str::String,
                         end
                         println(err)
                         error("Some error occurred")
-                        return zeros(Rational{BigInt}, n_results)
+                        return zeros(fmpq, n_results)
                     end
                 end
 
@@ -158,22 +158,22 @@ More examples are available in the support of the equivariant classes. It is eno
 
 To add more classes, please contact the authors.
 """
-function AtiyahBottFormula(n::Int64, deg::Int64, n_marks::Int64, P, do_check::Bool = true, show_bar::Bool = true, down_col::Bool = true)::Vector{Rational{BigInt}}
+function AtiyahBottFormula(n::Int64, deg::Int64, n_marks::Int64, P, do_check::Bool = true, show_bar::Bool = true, down_col::Bool = true)::Vector{fmpq}
     
     if n < 1
         printstyled("ERROR: ", bold=true, color=:red)
         println("n must be positive, correct ", n)
-        return [Rational{BigInt}(0)]
+        return [fmpq(0)]
     end
     if deg > 13 || deg < 1
         printstyled("ERROR: ", bold=true, color=:red)
         println("d must be between 1 and 13, correct ", deg)
-        return [Rational{BigInt}(0)]
+        return [fmpq(0)]
     end
     if n_marks < 0
         printstyled("ERROR: ", bold=true, color=:red)
         println("m must be non negative, correct ", n_marks)
-        return [Rational{BigInt}(0)]
+        return [fmpq(0)]
     end
     
     if !isa(P, Array)  #we want that P is an array, possibly with only one element
@@ -181,7 +181,7 @@ function AtiyahBottFormula(n::Int64, deg::Int64, n_marks::Int64, P, do_check::Bo
     end
 
     if do_check && !is_zero_cycle(n, deg, n_marks, P)
-        return [Rational{BigInt}(0)]
+        return [fmpq(0)]
     end
 
     if down_col && !fill_Data(n, deg)
@@ -189,18 +189,19 @@ function AtiyahBottFormula(n::Int64, deg::Int64, n_marks::Int64, P, do_check::Bo
         println("I was unable to download the colorations from the repository. Check your internet connection or execute:")
         printstyled("julia> ", bold=true, color=:light_green)
         println("AtiyahBottFormula($n,$deg,$n_marks,P,$do_check,$show_bar,false);")
-        return [Rational{BigInt}(0)]
+        return [fmpq(0)]
     end
 
     
     local n_results::Int64 = length(P)   #this store the number of final results of our computation
-    local result::Vector{Rational{BigInt}} = zeros(Rational{BigInt}, n_results) #the array of final results
+    local result::Vector{fmpq} = zeros(fmpq, n_results) #the array of final results
     local max_col::Int64 = n+1   #the colors are number from 1 to n+1
      
     list_g::IOStream = open(current_dir*"/list_trees.txt") 
     #open the file containing the list of Prufer sequences of graphs
 
-    s::Vector{Rational{BigInt}} = convert(Vector{Rational{BigInt}},rand(-1000*max_col*deg:1000*max_col*deg,max_col)) 
+    s::Vector{fmpq} = convert(Vector{fmpq},
+                    rand(-1000*max_col*deg:1000*max_col*deg,max_col)) 
 
     #set up progress data                                    
     threshold::Int64 = sum(v -> number_trees[v-1]*max_col*(n^(v-1))*(v^n_marks), 2:deg+1)
